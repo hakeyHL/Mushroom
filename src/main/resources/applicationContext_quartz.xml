@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+http://www.springframework.org/schema/beans 
+http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+http://www.springframework.org/schema/context 
+http://www.springframework.org/schema/context/spring-context-3.0.xsd
+">
+ 	<!--调度器工厂-->
+    <bean id="TimerScheduler"
+          class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <property name="triggers">
+            <list>
+                <!--两个定时器-->
+                <!--从mysql同步到redis和memory-->
+                <ref bean="initSyncJob"></ref>
+                <!--从redis同步到memeory到mysql -->
+                <ref bean="triggerSyncJob"></ref>
+            </list>
+        </property>
+        <property name="autoStartup" value="false"></property>
+    </bean>
+    <!-- 第一个定时器 -->
+    <!--触发点-->
+
+    <bean id="initSyncJob"
+          class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">
+        <property name="jobDetail" ref="initSyncCheck">
+        </property>
+        <property name="repeatInterval">
+            <!-- 2秒一次-->
+            <value>2000</value>
+        </property>
+        <property name="startDelay"><value>0</value></property>
+        <!--重复次数：0-->
+        <!--去掉的话按结束时间算
+        -->
+        <!--  
+        <property name="repeatCount">
+            <value>8</value>
+        </property>
+        -->
+    </bean>
+    <!--定时器具体作业-->
+
+    <bean id="initSyncCheck" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject" ref="initJob">
+        </property>
+        <property name="targetMethod" value="job"></property>
+
+        <property name="concurrent" value="false"/>
+    </bean>
+    <bean id="initJob" class="zxh.quartz.MulCollect"/>
+    
+	<!-- 第二个定时器 -->
+	<!--触发点-->
+    <bean id="triggerSyncJob" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">
+        <property name="jobDetail" ref="syncCheck" />
+        <property name="startDelay" value="5000" /><!-- 调度工厂实例化后，经过5秒开始执行调度 -->
+        <property name="repeatInterval" value="2000" /><!-- 每2秒调度一次 -->
+    </bean> 
+	
+	<!--定时器具体作业-->
+
+	<bean id="syncCheck" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject" ref="syncJob">
+        </property>
+        <property name="targetMethod" value="job"></property>
+
+        <property name="concurrent" value="false"/>
+    </bean>
+    <bean id="syncJob" class="zxh.quartz.CountDays"/>
+
+</beans>
